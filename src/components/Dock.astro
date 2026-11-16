@@ -1,0 +1,35 @@
+---
+import Icon from "./Icon.astro";
+import { PERSON } from "@/data/site";
+import { getResume } from "@/lib/resume";
+const resume = getResume();
+type Item = { label: string; aria?: string; href: string; icon: any; download?: string; external?: boolean };
+const items: Item[] = [
+  { label: "Home", aria: "Home", href: "#top", icon: "home" },
+  { label: "Apps", aria: "Apps", href: "#apps", icon: "apps" },
+  ...(resume ? [{ label: "Résumé", aria: "Download résumé (PDF)", href: resume.href, icon: "resume", download: resume.downloadName }] : []),
+  { label: "Email", aria: `Email ${PERSON.name}`, href: `mailto:${PERSON.email}`, icon: "mail" },
+  { label: "LinkedIn", aria: "LinkedIn (opens in a new tab)", href: PERSON.linkedin.url, icon: "linkedin", external: true },
+  { label: "X", aria: "X (opens in a new tab)", href: PERSON.x.url, icon: "x", external: true },
+  // GitHub is hidden until its URL is confirmed in src/data/site.ts.
+  ...(PERSON.github.confirmed ? [{ label: "GitHub", aria: "GitHub (opens in a new tab)", href: PERSON.github.url, icon: "github", external: true }] : []),
+];
+---
+<nav aria-label="Quick links" class="dock">
+  <ul>
+    {items.map((it) => (
+      <li class="dock-item">
+        <a
+          href={it.href}
+          aria-label={it.aria ?? it.label}
+          download={it.download}
+          target={it.external ? "_blank" : undefined}
+          rel={it.external ? "noopener noreferrer" : undefined}
+        >
+          <Icon name={it.icon} class="size-5" />
+        </a>
+        <span class="dock-label" aria-hidden="true">{it.label}</span>
+      </li>
+    ))}
+  </ul>
+</nav>

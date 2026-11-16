@@ -1,0 +1,281 @@
+---
+import fs from "node:fs";
+import path from "node:path";
+import Layout from "@/layouts/Layout.astro";
+import Section from "@/components/Section.astro";
+import Dock from "@/components/Dock.astro";
+import {
+  PERSON, FACTS, TECH_TICKER, STRENGTHS, APPS, CASE_STUDIES, EXPERIENCE, SKILLS, EDUCATION, CONTACT, SECTIONS, OWNERSHIP_NOTE,
+  RENDER_UNCONFIRMED_STORE_LINKS,
+} from "@/data/site";
+import { getResume } from "@/lib/resume";
+import { getHeadshot } from "@/lib/headshot";
+
+const resume = getResume();
+const headshot = getHeadshot();
+const exists = (src: string) => fs.existsSync(path.join(process.cwd(), "public", src.replace(/^\//, "")));
+// Personal projects always go last. Images only render if the file is present in public/.
+const apps = APPS.filter((a) => a.show)
+  .sort((a, b) => Number(!!a.personal) - Number(!!b.personal))
+  .map((a) => ({ ...a, icon: a.icon && exists(a.icon) ? a.icon : undefined, shots: a.shots.filter((s) => exists(s.src)), gallery: (a.gallery ?? []).filter((g) => exists(g.src)) }));
+// Store URLs with confirmed:false are candidates; they render only while RENDER_UNCONFIRMED_STORE_LINKS is true.
+// Store buttons always render App Store first, then Google Play.
+const storeOrder = { "App Store": 0, "Google Play": 1 } as const;
+const visibleLinks = (app: (typeof APPS)[number]) =>
+  app.links.filter((l) => l.url && (l.confirmed || RENDER_UNCONFIRMED_STORE_LINKS)).sort((a, b) => storeOrder[a.store] - storeOrder[b.store]);
+const github = PERSON.github.confirmed ? PERSON.github.url : null;
+const year = new Date().getFullYear();
+const leadWords = PERSON.headline.lead.split(" ");
+const accentWords = PERSON.headline.accent.split(" ");
+const nums = (i: number) => String(i).padStart(2, "0");
+// Layout of the work grid: the first card is wide; personal projects (last) also go wide and flip media to the right.
+const cardClass = (i: number, n: number, a: (typeof apps)[number]) =>
+  `work-card theme-${a.theme}${i === 0 ? " wide" : ""}${a.personal ? " wide flip" : ""}`;
+---
+<Layout>
+  <header class="site-header" id="top">
+    <div class="wrap">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true">{PERSON.initials}</span>
+        <span>{PERSON.name}</span>
+      </a>
+      <nav class="nav" aria-label="Sections">
+        <ul>
+          {SECTIONS.map((s) => <li><a href={`#${s.id}`}>{s.label}</a></li>)}
+        </ul>
+      </nav>
+      <div class="header-cta">
+        <span class="avail"><span class="dot" aria-hidden="true"></span>{PERSON.availability}</span>
+        {resume && <a class="btn btn-ghost btn-sm header-resume" href={resume.href} download={resume.downloadName} aria-label={`Download résumé (${resume.meta})`}>Résumé <span class="arr" aria-hidden="true">↓</span></a>}
+        <a class="btn btn-ink btn-sm" href="#contact">Let's talk</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1" class="focus:outline-none">
+    <!-- HERO -->
+    <section class="hero" aria-labelledby="hero-h">
+      <div class="wrap">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow mono"><span class="sq" aria-hidden="true"></span>{PERSON.roles.join(" · ")}</p>
+            <h1 id="hero-h" class="hero-title">
+              <span class="hi rise d1">Hi, I'm {PERSON.firstName}.</span>{" "}
+              {leadWords.map((w, i) => <><span class={`rise d${Math.min(i + 2, 16)}`}>{w}</span>{" "}</>)}
+              <em class="hl">{accentWords.map((w, i) => <><span class={`rise d${Math.min(leadWords.length + i + 2, 16)}`}>{w}</span>{i < accentWords.length - 1 ? " " : ""}</>)}</em>
+            </h1>
+            <p class="hero-sub fade-up">{PERSON.summary}</p>
+            <div class="hero-cta fade-up">
+              <a class="btn btn-ink" href="#apps">See my work <span class="arr" aria-hidden="true">↘</span></a>
+            </div>
+          </div>
+
+          <div class="portrait fade-up">
+            <div class="portrait-frame">
+              {headshot ? (
+                <img src={headshot.src} alt={headshot.alt} width="640" height="800" fetchpriority="high" decoding="async" />
+              ) : (
+                <div class="portrait-mono" role="img" aria-label={`${PERSON.name} monogram`}><span>{PERSON.initials}</span></div>
+              )}
+              <p class="portrait-tag"><span class="dot" aria-hidden="true"></span>{PERSON.availability}</p>
+            </div>
+            <span class="portrait-sticker" aria-hidden="true">15+ yrs mobile</span>
+          </div>
+        </div>
+
+        <dl class="facts">
+          {FACTS.map((f) => (
+            <div><dt>{f.label}</dt><dd>{f.figure}</dd></div>
+          ))}
+        </dl>
+      </div>
+    </section>
+
+    <!-- TICKER -->
+    <div class="ticker">
+      <div class="ticker-track">
+        <ul aria-label="Technologies I work with">{TECH_TICKER.map((t) => <li>{t}</li>)}</ul>
+        <ul aria-hidden="true">{TECH_TICKER.map((t) => <li>{t}</li>)}</ul>
+      </div>
+    </div>
+
+    <!-- WORK -->
+    <Section id="apps" num="01" label="Selected work" title="Apps I've shipped"
+      lede="Production apps from my employed roles, plus one personal product I'm building.">
+      <div class="work-grid">
+        {apps.map((app, i) => {
+          const links = visibleLinks(app);
+          const hid = `app-${i}-h`;
+          // The ownership note covers employer apps only: it sits right after the last employer card, before personal projects.
+          const lastEmployer = i === apps.length - 1 || (!app.personal && !!apps[i + 1]?.personal);
+          return (
+            <>
+            <article class={cardClass(i, apps.length, app)} aria-labelledby={hid}>
+              <div class="work-media">
+                {app.icon && <img class="app-icon" src={app.icon} alt="" width="52" height="52" loading="lazy" decoding="async" />}
+                {app.gallery.length > 0 ? (
+                  <figure class="m-0">
+                    <div class="gallery" tabindex="0" role="region" aria-label={`${app.listingName} screens (scroll horizontally)`}>
+                      {app.gallery.map((g) => (
+                        <figure>
+                          <img src={g.src} alt={g.alt} width="600" height="750" loading="lazy" decoding="async" />
+                          <figcaption>{g.caption}</figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                    {app.disclaimer && <figcaption class="media-cap">{app.disclaimer}</figcaption>}
+                  </figure>
+                ) : app.shots.length > 0 ? (
+                  <figure class="m-0">
+                    <div class="shots">
+                      {app.shots.map((s, k) => (
+                        <div class={`shot s${k + 1}`}><img src={s.src} alt={s.alt} width="420" height="747" loading="lazy" decoding="async" /></div>
+                      ))}
+                    </div>
+                    {app.shotsCaption && <figcaption class="media-cap">{app.shotsCaption}</figcaption>}
+                  </figure>
+                ) : (
+                  <p class="media-cap">{app.placeholderText}</p>
+                )}
+              </div>
+              <div class="work-body">
+                {app.personal && <span class="badge">Personal project</span>}
+                <p class="mono">{app.kicker}</p>
+                <h3 id={hid} class="work-title">{app.name}</h3>
+                <p class="work-summary">{app.summary}</p>
+                <p class="work-attr">{app.attribution}</p>
+                <ul class="chips" aria-label="Tech">{app.tags.slice(0, 5).map((t) => <li class="chip">{t}</li>)}</ul>
+                {(app.note && links.length > 0) || app.extLink?.show ? (
+                  <p class="work-note">
+                    {app.note && links.length > 0 && <span>{app.note}</span>}
+                    {app.extLink?.show && (
+                      <a class="ulink work-ext" href={app.extLink.url} target="_blank" rel="noopener noreferrer">
+                        {app.extLink.label} <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span>
+                      </a>
+                    )}
+                  </p>
+                ) : null}
+                <div class="store-links">
+                  {links.length > 0 ? links.map((l) => (
+                    <a class="btn btn-ghost btn-sm" href={l.url} target="_blank" rel="noopener noreferrer"
+                       aria-label={`${app.listingName} on ${l.store} (opens in a new tab)`}>
+                      {l.store} <span class="arr" aria-hidden="true">↗</span>
+                    </a>
+                  )) : app.noLinkText ? <span class="work-note">{app.noLinkText}</span> : null}
+                </div>
+              </div>
+            </article>
+            {lastEmployer && !app.personal && <p class="owner-note">{OWNERSHIP_NOTE}</p>}
+            </>
+          );
+        })}
+      </div>
+    </Section>
+
+    <!-- APPROACH -->
+    <Section id="about" num="02" label="Approach" title="How I lead mobile work">
+      <ol class="approach">
+        {STRENGTHS.map((s, i) => (
+          <li>
+            <span class="n" aria-hidden="true">{nums(i + 1)}</span>
+            <h3>{s.title}</h3>
+            <p>{s.body}</p>
+            <ul class="chips" aria-label={`${s.title}: highlights`}>{s.tags.map((t) => <li class="chip">{t}</li>)}</ul>
+          </li>
+        ))}
+      </ol>
+    </Section>
+
+    <!-- CASE STUDIES -->
+    <Section id="work" num="03" label="Case studies" title="Inside the work">
+      <div class="cases">
+        {CASE_STUDIES.map((cs, i) => (
+          <details class="case" open={i === 0}>
+            <summary>
+              <span class="idx" aria-hidden="true">{nums(i + 1)}</span>
+              <span><span class="ct">{cs.title}</span><span class="cm">{cs.role} · {cs.dates}</span></span>
+              <span class="tog" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </span>
+            </summary>
+            <dl class="case-body">
+              {cs.items.map((it) => (
+                <div>
+                  <dt>{it.label}</dt>
+                  <dd>{it.body.map((b) => <p>{b}</p>)}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        ))}
+      </div>
+    </Section>
+
+    <!-- EXPERIENCE -->
+    <Section id="experience" num="04" label="Experience" title="15+ years across seven companies">
+      <ul class="xp">
+        {EXPERIENCE.map((e) => (
+          <li>
+            <span class="yr">{e.dates}<span class="loc">{e.location}</span></span>
+            <span class="who"><span class="co">{e.company}</span><span class="ro">{e.role}</span></span>
+            <ul class="pts">{e.points.map((pt) => <li>{pt}</li>)}</ul>
+          </li>
+        ))}
+      </ul>
+    </Section>
+
+    <!-- SKILLS -->
+    <Section id="skills" num="05" label="Skills" title="The full mobile toolkit"
+      lede="Every mobile skill from my résumé, grouped by area.">
+      <dl class="skills">
+        {SKILLS.map((s) => (
+          <div>
+            <dt>{s.group}</dt>
+            <dd><ul class="chips">{s.items.map((t) => <li class="chip">{t}</li>)}</ul></dd>
+          </div>
+        ))}
+      </dl>
+    </Section>
+
+    <!-- EDUCATION -->
+    <Section id="education" num="06" label="Education" title="Education and recognition">
+      <ul class="edu">
+        {EDUCATION.map((e) => (
+          <li><span><span class="t">{e.title}</span><span class="d">, {e.detail}</span></span>{e.years && <span class="mono">{e.years}</span>}</li>
+        ))}
+      </ul>
+    </Section>
+
+    <!-- CONTACT -->
+    <section id="contact" class="contact" aria-labelledby="contact-h">
+      <div class="wrap">
+        <p class="sec-num"><span aria-hidden="true">07 /</span> Contact</p>
+        <h2 id="contact-h" class="contact-title">Need a mobile engineer or a <em>tech lead?</em></h2>
+        <p class="body">{CONTACT.body}</p>
+        <div class="hero-cta">
+          <a class="btn btn-ink" href={`mailto:${PERSON.email}`}>Email me <span class="arr" aria-hidden="true">↗</span></a>
+          <a class="btn btn-ghost" href={PERSON.linkedin.url} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn (opens in a new tab)">LinkedIn <span class="arr" aria-hidden="true">↗</span></a>
+          {github && <a class="btn btn-ghost" href={github} target="_blank" rel="noopener noreferrer" aria-label="GitHub (opens in a new tab)">GitHub <span class="arr" aria-hidden="true">↗</span></a>}
+          <a class="btn btn-ghost" href={PERSON.x.url} target="_blank" rel="noopener noreferrer" aria-label="X (opens in a new tab)">X <span class="arr" aria-hidden="true">↗</span></a>
+          {resume && <a class="btn btn-ghost" href={resume.href} download={resume.downloadName} aria-label="Download résumé (PDF)">Download résumé <span class="arr" aria-hidden="true">↓</span></a>}
+        </div>
+        <p class="contact-mail">{PERSON.email}</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>© {year} {PERSON.name}<br /><span class="foot-credit">Mobile portfolio template by <a class="ulink" href="https://github.com/chenky2981988">Chirag Sidhiwala</a>, adapted from <a class="ulink" href="https://github.com/webrating/starfolio">Starfolio</a> (MIT).</span></p>
+      <ul>
+        <li class="foot-social"><a class="ulink" href={`mailto:${PERSON.email}`}>Email</a></li>
+        <li class="foot-social"><a class="ulink" href={PERSON.linkedin.url} target="_blank" rel="noopener noreferrer">LinkedIn<span class="sr-only"> (opens in a new tab)</span></a></li>
+        <li class="foot-social"><a class="ulink" href={PERSON.x.url} target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (opens in a new tab)</span></a></li>
+        {github && <li class="foot-social"><a class="ulink" href={github} target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (opens in a new tab)</span></a></li>}
+        <li><a class="ulink" href="#top">Back to top ↑</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <Dock slot="after" />
+</Layout>

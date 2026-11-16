@@ -1,0 +1,35 @@
+{
+  "name": "mobile-portfolio-template",
+  "type": "module",
+  "private": true,
+  "description": "Mobile portfolio template by Chirag Sidhiwala, adapted from Starfolio (MIT).",
+  "version": "0.1.0",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.2",
+    "@fontsource-variable/outfit": "^5.2.8",
+    "@fontsource/instrument-serif": "^5.3.0",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@tailwindcss/vite": "^4.2.4",
+    "astro": "^6.2.1",
+    "tailwindcss": "^4.2.4"
+  },
+  "overrides": {
+    "vite": "^7"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "typescript": "^6.0.3"
+  },
+  "author": "Chirag Sidhiwala (https://github.com/chenky2981988)"
+}

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mobile-portfolio-template.vercel.app/sitemap-index.xml
